@@ -8,7 +8,13 @@ import {
   Transition,
 } from "@mantine/core";
 import { ObjectID } from "bson";
-import { ChangeEventHandler, FormEventHandler, useRef, useState } from "react";
+import {
+  ChangeEventHandler,
+  FormEventHandler,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { ImAttachment } from "react-icons/im";
 import { IoMdClose } from "react-icons/io";
 import { MESSAGE_LIMIT, trpc } from "~/utils/trpc";
@@ -16,7 +22,11 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { showNotification } from "@mantine/notifications";
 
-export default function Chatinput() {
+type Props = {
+  scrollToLastMessage: () => void;
+};
+
+export default function Chatinput({ scrollToLastMessage }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -75,7 +85,7 @@ export default function Chatinput() {
                   ...newMessage,
                   id: messageId,
                   // render blob image for optimistic update
-                  imageURL: file ? URL.createObjectURL(file) : undefined,
+                  imageURL: file ? URL.createObjectURL(file) : null,
                   createdAt: dayjs().toString(),
                   updatedAt: "",
                 },
@@ -114,6 +124,16 @@ export default function Chatinput() {
       });
     }
   };
+
+  /*
+  best place to put this functionality would be right after the data is optimistically updated
+  but currently it'll scroll to second to the last image instead
+  because the function is run before the data is updated if useState was used to manage messages,
+  the function `flushSync` (https://beta.reactjs.org/reference/react-dom/flushSync) would have fixed that
+  */
+  useEffect(() => {
+    scrollToLastMessage();
+  });
 
   return (
     <form

@@ -1,9 +1,20 @@
 import { Box } from "@mantine/core";
+import { useRef } from "react";
 import Chatbox from "~/components/Chatbox";
 import Chatinput from "~/components/Chatinput";
-import { trpc } from "~/utils/trpc";
 
 export default function IndexPage() {
+  const messageListRef = useRef<HTMLDivElement>(null);
+
+  const scrollToLastMessage = () => {
+    const lastMessage = messageListRef.current?.lastElementChild;
+    lastMessage?.scrollIntoView({
+      block: "end",
+      inline: "nearest",
+      behavior: "smooth",
+    });
+  };
+
   return (
     <Box
       component="div"
@@ -17,8 +28,8 @@ export default function IndexPage() {
         overflow: "hidden",
       }}
     >
-      <Chatbox />
-      <Chatinput />
+      <Chatbox ref={messageListRef} />
+      <Chatinput scrollToLastMessage={scrollToLastMessage} />
     </Box>
   );
 }

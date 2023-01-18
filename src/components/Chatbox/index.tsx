@@ -1,14 +1,14 @@
 import { Flex, Text } from "@mantine/core";
 import { MESSAGE_LIMIT, trpc } from "~/utils/trpc";
 import { Message as MessageType } from "@prisma/client";
-import { useMemo } from "react";
+import { ForwardedRef, forwardRef, useMemo } from "react";
 import dayjs from "dayjs";
 import Message from "../Message";
 import { AiFillMessage } from "react-icons/ai";
 import { ImSpinner8 } from "react-icons/im";
 import { IoMdClose } from "react-icons/io";
 
-export default function Chatbox() {
+const Chatbox = forwardRef((props, ref: ForwardedRef<HTMLDivElement>) => {
   const { isLoading, data, error } = trpc.msg.list.useInfiniteQuery(
     {
       limit: MESSAGE_LIMIT,
@@ -80,7 +80,7 @@ export default function Chatbox() {
           <Text>There are no messages</Text>
         </>
       ) : (
-        <Flex direction="column" pb="40px" gap="sm">
+        <Flex ref={ref} direction="column" pb="40px" gap="sm">
           {allMessages.map(({ createdAt, ...message }) => (
             <Message
               key={message.id}
@@ -92,4 +92,6 @@ export default function Chatbox() {
       )}
     </Flex>
   );
-}
+});
+
+export default Chatbox;

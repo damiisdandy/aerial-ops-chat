@@ -20,7 +20,7 @@ export default function IndexPage() {
       component="div"
       w="100vw"
       h="100vh"
-      mah="800px"
+      mah="700px"
       maw="450px"
       pos="relative"
       sx={{

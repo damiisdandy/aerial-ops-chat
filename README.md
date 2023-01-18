@@ -32,3 +32,10 @@ yarn
 
 yarn dev
 ```
+
+**Screenshots**
+![Empty chat](/src/images/blank.png?raw=true "Empty Chat")
+<br/>
+<br/>
+<br/>
+![Chat](/src/images/content.png?raw=true "Chat")

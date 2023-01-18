@@ -7,9 +7,18 @@
  * @see https://trpc.io/docs/v10/router
  * @see https://trpc.io/docs/v10/procedures
  */
-import { initTRPC } from '@trpc/server';
+import { inferAsyncReturnType, initTRPC } from '@trpc/server';
+import prisma from '~/database/client';
 
-const t = initTRPC.create();
+export const createContext = async () => {
+  return {
+    prisma,
+  }
+}
+
+type Context = inferAsyncReturnType<typeof createContext>
+
+const t = initTRPC.context<Context>().create();
 
 /**
  * Unprotected procedure

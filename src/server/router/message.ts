@@ -1,6 +1,7 @@
 import { addMessageSchema, deleteMessageSchema, fetchMessagesSchema } from "../schema/message";
 import { publicProcedure, router } from "../trpc";
 import { ObjectID } from 'bson';
+import { deleteImage, getSignedURL } from "~/utils/aws";
 
 export const messageRouter = router({
   add: publicProcedure.input(addMessageSchema).mutation(async ({ input, ctx }) => {
@@ -13,15 +14,15 @@ export const messageRouter = router({
     let s3SignedURL = '';
 
     if (hasImage) {
-      const imageId = new ObjectID().toHexString(),
-        // logic to get s3 signed URL goes here
-        imageCreation = {
-          image: {
-            create: {
-              id: imageId
-            }
+      const imageId = new ObjectID().toHexString();
+      s3SignedURL = await getSignedURL(imageId);
+      imageCreation = {
+        image: {
+          create: {
+            id: imageId
           }
         }
+      }
     }
 
     const newMessage = await prisma.message.create({
@@ -92,6 +93,7 @@ export const messageRouter = router({
       });
       if (deletedMessage.image) {
         // also delete image on S3
+        deleteImage(deletedMessage.image.id);
       }
     }
     return null;

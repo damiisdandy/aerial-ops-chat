@@ -1,3 +1,4 @@
+import { Image } from '@prisma/client';
 import S3 from 'aws-sdk/clients/s3';
 
 const s3 = new S3({
@@ -35,4 +36,14 @@ export const deleteImage = (fileName: string) => {
   s3.deleteObject(deleteParam, (err, data) => {
     if (err) throw err;
   })
+}
+
+/**
+ * 
+ * @param image Id of image
+ * @returns string that maps to S3 public URL
+ */
+export const getImageURL = (image: string | null) => {
+  if (!image) return null;
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/${image}`
 }

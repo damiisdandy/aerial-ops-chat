@@ -1,7 +1,7 @@
 import { addMessageSchema, deleteMessageSchema, fetchMessagesSchema } from "../schema/message";
 import { publicProcedure, router } from "../trpc";
 import { ObjectID } from 'bson';
-import { deleteImage, getSignedURL } from "~/utils/aws";
+import { deleteImage, getImageURL, getSignedURL } from "~/utils/aws";
 
 export const messageRouter = router({
   add: publicProcedure.input(addMessageSchema).mutation(async ({ input, ctx }) => {
@@ -65,7 +65,7 @@ export const messageRouter = router({
     return {
       messages: messages.map(({ image, ...rest }) => ({
         ...rest,
-        imageURL: image?.id,
+        imageURL: getImageURL(image?.id || null),
         // reverse paginated messages so it render from top to bottom in UI
       })).reverse(),
       nextCursor,

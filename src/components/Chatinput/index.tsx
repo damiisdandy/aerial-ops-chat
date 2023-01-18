@@ -7,9 +7,14 @@ import {
   Text,
   Transition,
 } from "@mantine/core";
+import { ObjectID } from "bson";
 import { ChangeEventHandler, FormEventHandler, useRef, useState } from "react";
 import { ImAttachment } from "react-icons/im";
 import { IoMdClose } from "react-icons/io";
+import { MESSAGE_LIMIT, trpc } from "~/utils/trpc";
+import dayjs from "dayjs";
+import axios from "axios";
+import { showNotification } from "@mantine/notifications";
 
 export default function Chatinput() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,8 +39,80 @@ export default function Chatinput() {
     }
   };
 
+  const utils = trpc.useContext();
+  const { mutateAsync } = trpc.msg.add.useMutation({
+    onMutate: async (newMessage) => {
+      // clear input field
+      setText("");
+      // cancel previous queries
+      await utils.msg.list.cancel();
+      // get stores messages
+      const previousMessages = utils.msg.list.getInfiniteData({
+        limit: MESSAGE_LIMIT,
+      });
+      utils.msg.list.setInfiniteData({ limit: MESSAGE_LIMIT }, (data) => {
+        if (!data) {
+          return {
+            pageParams: [],
+            pages: [],
+          };
+        }
+
+        // Optimistic updates
+        const messageId = new ObjectID().toHexString();
+        // get current paginated page to add new data into
+        const otherPages = [...data.pages.slice(0, data.pages.length - 1)];
+        const currentPage = data.pages.pop();
+        return {
+          ...data,
+          pages: [
+            ...otherPages,
+            {
+              ...currentPage,
+              messages: [
+                ...(currentPage?.messages || []),
+                {
+                  ...newMessage,
+                  id: messageId,
+                  // render blob image for optimistic update
+                  imageURL: file ? URL.createObjectURL(file) : undefined,
+                  createdAt: dayjs().toString(),
+                  updatedAt: "",
+                },
+              ],
+            },
+          ],
+        };
+      });
+      return { ...previousMessages };
+    },
+    onSettled: () => {
+      setFile(null);
+    },
+  });
+
   const onSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
+    try {
+      const newMessage = await mutateAsync({
+        message: text,
+        hasImage: file !== null,
+      });
+      if (newMessage.s3SignedURL) {
+        await axios.put(newMessage.s3SignedURL, file);
+        // if it has an image invalidate query after image has been upload
+        // to prevent fetching image URL that does not exist
+        utils.msg.list.invalidate();
+      } else {
+        // if no image, invalide after message is created
+        utils.msg.list.invalidate();
+      }
+    } catch (err) {
+      showNotification({
+        message: "Problem sending message",
+        color: "red",
+      });
+    }
   };
 
   return (

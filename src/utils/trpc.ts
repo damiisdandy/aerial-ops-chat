@@ -30,3 +30,6 @@ export const trpc = createTRPCNext<AppRouter>({
   },
   ssr: false,
 });
+
+// get 10 messages per page
+export const MESSAGE_LIMIT = 10

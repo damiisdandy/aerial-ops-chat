@@ -1,15 +1,30 @@
 import { Flex, Text } from "@mantine/core";
 import { MESSAGE_LIMIT, trpc } from "~/utils/trpc";
 import { Message as MessageType } from "@prisma/client";
-import { ForwardedRef, forwardRef, useMemo } from "react";
+import {
+  ForwardedRef,
+  forwardRef,
+  MutableRefObject,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import dayjs from "dayjs";
 import Message from "../Message";
 import { AiFillMessage } from "react-icons/ai";
 import { ImSpinner8 } from "react-icons/im";
 import { IoMdClose } from "react-icons/io";
+import { useItersectionObserver } from "~/hooks/useIntersectionObserver";
 
 const Chatbox = forwardRef((props, ref: ForwardedRef<HTMLDivElement>) => {
-  const { isLoading, data, error } = trpc.msg.list.useInfiniteQuery(
+  const {
+    isLoading,
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = trpc.msg.list.useInfiniteQuery(
     {
       limit: MESSAGE_LIMIT,
     },
@@ -35,6 +50,28 @@ const Chatbox = forwardRef((props, ref: ForwardedRef<HTMLDivElement>) => {
         ),
     [data]
   );
+
+  const loadMoreRef = useItersectionObserver(
+    {
+      callback: fetchNextPage,
+      shouldObserve: hasNextPage && !isFetchingNextPage,
+    },
+    {
+      threshold: 1,
+    }
+  );
+
+  // on first load scroll to bottom of view
+  useEffect(() => {
+    if (data) {
+      const chatBoxContainerRef =
+        ref as MutableRefObject<HTMLDivElement | null>;
+      if (data.pages.length === 1) {
+        const lastChild = chatBoxContainerRef.current?.lastElementChild;
+        lastChild?.scrollIntoView();
+      }
+    }
+  }, [data]);
 
   return (
     <Flex
@@ -81,6 +118,12 @@ const Chatbox = forwardRef((props, ref: ForwardedRef<HTMLDivElement>) => {
         </>
       ) : (
         <Flex ref={ref} direction="column" pb="40px" gap="sm">
+          <Text ref={loadMoreRef}>
+            {isFetchingNextPage ? "Loading more messages..." : ""}
+          </Text>
+          {!hasNextPage && !isFetchingNextPage && (
+            <Text align="center">You&apos;ve reached the top 🎉</Text>
+          )}
           {allMessages.map(({ createdAt, ...message }) => (
             <Message
               key={message.id}

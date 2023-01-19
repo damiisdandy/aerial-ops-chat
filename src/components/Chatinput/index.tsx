@@ -134,7 +134,7 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
       });
       if (newMessage.s3SignedURL) {
         axios
-          .put(newMessage.s3SignedURL + "beans", file)
+          .put(newMessage.s3SignedURL, file)
           .then(() => {
             utils.msg.list.invalidate();
           })

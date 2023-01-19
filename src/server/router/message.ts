@@ -8,31 +8,24 @@ export const messageRouter = router({
     const { message, hasImage } = input;
     const { prisma } = ctx;
 
-    // prisma create connect object for creating image with message.create()
-    let imageCreation = {};
-    // S3 signed URL
-    let s3SignedURL = '';
 
-    if (hasImage) {
-      const imageId = new ObjectID().toHexString();
-      s3SignedURL = await getSignedURL(imageId);
-      imageCreation = {
-        image: {
-          create: {
-            id: imageId
-          }
-        }
-      }
-    }
+    const imageId = new ObjectID().toHexString();
+    const s3SignedURL = await getSignedURL(imageId);
 
     const newMessage = await prisma.message.create({
       data: {
         message,
-        ...imageCreation,
+        ...(hasImage ? {
+          image: {
+            create: {
+              id: imageId,
+            }
+          }
+        } : {}),
       },
     })
 
-    return { ...newMessage, s3SignedURL }
+    return { ...newMessage, s3SignedURL: hasImage ? s3SignedURL : '' }
   }),
 
   list: publicProcedure.input(fetchMessagesSchema).query(async ({ input, ctx }) => {

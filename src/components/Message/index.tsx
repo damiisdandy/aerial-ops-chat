@@ -45,9 +45,25 @@ export default function Message({ id, message, createdAt, imageURL }: Props) {
       });
       return { ...previousMessages };
     },
-    onSettled: () => {
-      utils.msg.list.invalidate();
+    // on optimistic update fail, add back previous data
+    onError: (err, prevData, context) => {
+      utils.msg.list.setInfiniteData({ limit: MESSAGE_LIMIT }, () => {
+        if (!context) {
+          return {
+            pageParams: [],
+            pages: [],
+          };
+        }
+        return {
+          pageParams: context.pageParams || [],
+          pages: context.pages || [],
+        };
+      });
     },
+    // for optimistic update on delete, if it fails invalidate still keeps message stored
+    // onSettled: () => {
+    //   utils.msg.list.invalidate();
+    // },
   });
 
   const deleteMessage = async () => {

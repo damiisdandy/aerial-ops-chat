@@ -30,6 +30,8 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
   const fileInputRef = useRef<() => void>(null);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  // store new message id for if optimistic update fails
+  const [newMessageId, setNewMessageId] = useState("");
 
   const onTextChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     setText(e.target.value);
@@ -69,7 +71,8 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
         }
 
         // Optimistic updates
-        const messageId = new ObjectID().toHexString();
+        const messageId = new ObjectID();
+        setNewMessageId(messageId.toString());
         // get current paginated page to add new data into
         const otherPages = [...data.pages.slice(0, data.pages.length - 1)];
         const currentPage = data.pages.pop();
@@ -83,7 +86,7 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
                 ...(currentPage?.messages || []),
                 {
                   ...newMessage,
-                  id: messageId,
+                  id: newMessageId,
                   // render blob image for optimistic update
                   imageURL: file ? URL.createObjectURL(file) : null,
                   createdAt: dayjs().toString(),
@@ -99,6 +102,27 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
     onSettled: () => {
       setFile(null);
     },
+    // optmistic update fail, remove newly created message
+    onError: () => {
+      utils.msg.list.setInfiniteData({ limit: MESSAGE_LIMIT }, (data) => {
+        if (!data) {
+          return {
+            pageParams: [],
+            pages: [],
+          };
+        }
+        return {
+          ...data,
+          // remove any message with that given ID
+          pages: data.pages.map((page) => ({
+            ...page,
+            messages: page.messages.filter(
+              (message) => message.id !== newMessageId
+            ),
+          })),
+        };
+      });
+    },
   });
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
@@ -109,10 +133,51 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
         hasImage: file !== null,
       });
       if (newMessage.s3SignedURL) {
-        await axios.put(newMessage.s3SignedURL, file);
+        axios
+          .put(newMessage.s3SignedURL + "beans", file)
+          .then(() => {
+            utils.msg.list.invalidate();
+          })
+          // handle error here, instead of within try catch
+          .catch(() => {
+            showNotification({
+              message: "Problem uploading image",
+              color: "red",
+            });
+            // if images fails to upload remove imageURL from message
+            utils.msg.list.setInfiniteData({ limit: MESSAGE_LIMIT }, (data) => {
+              if (!data) {
+                return {
+                  pageParams: [],
+                  pages: [],
+                };
+              }
+              return {
+                ...data,
+                // remove any message with that given ID
+                pages: data.pages.map((page) => {
+                  const previousMessages = page.messages.filter(
+                    (message) => message.id !== newMessageId
+                  );
+                  const currentMessage = page.messages.find(
+                    (message) => message.id === newMessageId
+                  );
+                  if (currentMessage)
+                    previousMessages.push({
+                      ...currentMessage,
+                      imageURL: null,
+                    });
+
+                  return {
+                    ...page,
+                    messages: [...previousMessages],
+                  };
+                }),
+              };
+            });
+          });
         // if it has an image invalidate query after image has been upload
         // to prevent fetching image URL that does not exist
-        utils.msg.list.invalidate();
       } else {
         // if no image, invalide after message is created
         utils.msg.list.invalidate();

@@ -27,7 +27,7 @@ type Props = {
 };
 
 export default function Chatinput({ scrollToLastMessage }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<() => void>(null);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
@@ -38,14 +38,14 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
   const onFileChange = (file: File | null) => {
     setFile(file);
     if (fileInputRef.current) {
-      fileInputRef.current!.value = "";
+      fileInputRef.current?.();
     }
   };
 
   const clearFile = () => {
     setFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current!.value = "";
+      fileInputRef.current?.();
     }
   };
 
@@ -194,7 +194,11 @@ export default function Chatinput({ scrollToLastMessage }: Props) {
           w="100%"
           onChange={onTextChange}
         />
-        <FileButton accept="image/*" onChange={onFileChange}>
+        <FileButton
+          resetRef={fileInputRef}
+          accept="image/*"
+          onChange={onFileChange}
+        >
           {(props) => (
             <ActionIcon {...props} size="lg" color="white">
               <ImAttachment />
